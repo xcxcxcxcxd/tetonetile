@@ -1,0 +1,11 @@
+node_modules/
+data/
+!data/.gitkeep
+*.db
+*.db-shm
+*.db-wal
+.env
+backups/
+test-results/
+screenshots/
+.DS_Store
