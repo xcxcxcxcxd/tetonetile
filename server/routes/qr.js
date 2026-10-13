@@ -61,7 +61,8 @@ export function resolveCode(rawCode, user) {
   if (up.startsWith('KB-')) {
     const slug = code.slice(3).toLowerCase();
     const art = listArticles(true).find((a) => a.id === slug);
-    if (art) return { type: 'article', code: up, id: slug, title: art.title, url: `/knowledge/${slug}`, public: art.public ? { article: slug } : null, needsLogin: !signed && !art.public };
+    // Staff open the article in the app; visitors read public articles on the public page.
+    if (art) return { type: 'article', code: up, id: slug, title: art.title, url: signed ? `/knowledge/${slug}` : null, public: art.public ? { article: slug } : null, needsLogin: !signed && !art.public };
   }
 
   const loc = findLocation(up.replace(/^LOC[-:]/, ''));

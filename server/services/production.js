@@ -280,7 +280,7 @@ function recordQc(req, mo, product, q) {
     notes: q.notes || null,
     user_id: req.user?.id ?? null,
   });
-  if (result !== 'pass' && mo.lot_id) update('lots', mo.lot_id, { status: 'hold', notes: evaln.exceeded.map((e) => `${e.label} ${e.level} > ${e.allowed}`).join('; ') || 'QC hold' });
+  if (result !== 'pass' && mo.lot_id) update('lots', mo.lot_id, { status: 'hold', notes: evaln.exceeded.map((e) => (e.key === 'matches_reference' ? e.label : `${e.label}: level ${e.level}, standard ≤ ${e.allowed}`)).join('; ') || 'QC hold' });
   return { result, exceeded: evaln.exceeded, allowed: evaln.allowed };
 }
 
@@ -336,8 +336,9 @@ export function packToStock(req, mo, product, gradeA, gradeB) {
 
 /** Reserve freshly packed grade-A units for the order line the MO was made for. */
 function reserveProduced(req, mo, units) {
-  const line = get('SELECT dl.*, d.number FROM doc_lines dl JOIN sales_docs d ON d.id = dl.doc_id WHERE dl.id = ?', mo.order_line_id);
-  if (!line || !line.boxes) return;
+  const line = get('SELECT dl.*, d.number, d.status AS order_status FROM doc_lines dl JOIN sales_docs d ON d.id = dl.doc_id WHERE dl.id = ?', mo.order_line_id);
+  // A cancelled or finished order no longer takes stock: the pallets stay free.
+  if (!line || !line.boxes || ['cancelled', 'closed', 'shipped', 'delivered'].includes(line.order_status)) return;
   let need = line.boxes - reservedBoxes(line.id);
   for (const c of [...units].sort((a, b) => b.boxes - a.boxes)) {
     if (need <= 0) break;
@@ -400,7 +401,8 @@ export function releaseOrder(req, orderId, { force = false, allowMultiLot = fals
   tx(() => {
     for (const line of lines) {
       const planned = get(
-        "SELECT COALESCE(SUM(boxes_required), 0) AS n FROM manufacturing_orders WHERE order_line_id = ? AND status NOT IN ('cancelled')",
+        // Only batches still being made count: a finished batch is either reserved already or was not usable (QC).
+        "SELECT COALESCE(SUM(boxes_required), 0) AS n FROM manufacturing_orders WHERE order_line_id = ? AND status NOT IN ('cancelled','completed','closed')",
         line.id,
       ).n;
       const already = reservedBoxes(line.id);
@@ -467,7 +469,7 @@ export function readyForKiln() {
     .map(({ mo, st }) => ({ id: mo.id, number: mo.number, sku: mo.sku, product_name: mo.product_name, hex: mo.hex, lot_code: mo.lot_code, waiting: st.waiting, pcs_per_m2: mo.pcs_per_m2, image_url: `/api/products/${mo.product_id}/image` }));
 }
 
-export function addToKiln(req, loadId, moId, pcs) {
+export function addToKiln(req, loadId, moId, pcs, { force = false } = {}) {
   const load = get('SELECT * FROM kiln_loads WHERE id = ?', loadId);
   if (!load) throw notFound('Kiln load not found');
   if (load.status !== 'loading') throw bad(`${load.number} is ${load.status}; pieces can only be added while loading.`);
@@ -479,6 +481,17 @@ export function addToKiln(req, loadId, moId, pcs) {
   pcs = int(pcs);
   if (pcs <= 0) throw bad('Enter the number of pieces loaded.');
   if (pcs > st.waiting) throw bad(`Only ${st.waiting} pieces of ${mo.number} are ready for firing.`);
+  // Kiln capacity: an overloaded kiln fires unevenly (shade differences inside one lot).
+  const kiln = get('SELECT * FROM kilns WHERE id = ?', load.kiln_id);
+  const perM2 = get('SELECT f.pcs_per_m2 FROM manufacturing_orders mo JOIN products p ON p.id = mo.product_id LEFT JOIN formats f ON f.id = p.format_id WHERE mo.id = ?', moId)?.pcs_per_m2;
+  if (kiln?.capacity_m2 && perM2 && !force) {
+    const loaded = kilnLoadDetail(loadId).m2 || 0;
+    const after = round2(loaded + pcs / perM2);
+    if (after > kiln.capacity_m2 * 1.05) {
+      const fit = Math.max(0, Math.floor((kiln.capacity_m2 - loaded) * perM2));
+      throw conflict(`${kiln.name} holds about ${kiln.capacity_m2} m². This would make ${after} m² - about ${fit} more pieces of ${mo.number} fit.`, { code: 'over_capacity', fit });
+    }
+  }
   const existing = get('SELECT * FROM kiln_load_items WHERE kiln_load_id = ? AND mo_id = ?', loadId, moId);
   if (existing) update('kiln_load_items', existing.id, { pcs_loaded: existing.pcs_loaded + pcs });
   else insert('kiln_load_items', { kiln_load_id: loadId, mo_id: moId, pcs_loaded: pcs });
@@ -589,7 +602,9 @@ export function requirements() {
     .map((n) => {
       const stock = materialStock(n.material_id);
       const m = get('SELECT min_stock, reorder_qty FROM materials WHERE id = ?', n.material_id);
-      return { ...n, mos: [...new Set(n.mos)], stock, short: round2(Math.max(0, n.qty - stock)), min_stock: m?.min_stock || 0 };
+      // Counted items (pallets, cartons, rolls) are needed whole.
+      const qty = /^(pc|pcs|piece|pieces|unit|units|roll|rolls|box|boxes)$/i.test(n.unit || '') ? Math.ceil(n.qty - 1e-9) : n.qty;
+      return { ...n, qty, mos: [...new Set(n.mos)], stock, short: round2(Math.max(0, qty - stock)), min_stock: m?.min_stock || 0 };
     })
     .sort((a, b) => b.short - a.short || a.code.localeCompare(b.code));
 }

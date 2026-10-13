@@ -127,6 +127,21 @@ r.get('/dashboard', (req, res) => {
   });
 });
 
+/** Small counters for the navigation badges (cheap queries only). */
+r.get('/nav-counts', (req, res) => {
+  const t = today();
+  res.json({
+    putaway: get(`SELECT COUNT(*) AS n FROM stock_units u LEFT JOIN locations l ON l.id = u.location_id LEFT JOIN zones z ON z.id = l.zone_id
+      WHERE u.status IN ('in_stock','reserved','hold') AND u.parent_id IS NULL AND (u.location_id IS NULL OR z.kind = 'receiving')`).n,
+    holds: get("SELECT COUNT(*) AS n FROM lots WHERE status = 'hold'").n,
+    gates: get(`SELECT COUNT(*) AS n FROM sales_docs WHERE type = 'order' AND status IN ('confirmed','draft') AND (colour_approved_at IS NULL OR deposit_received_at IS NULL)`).n,
+    overdue: get(`SELECT COUNT(*) AS n FROM sales_docs WHERE type = 'invoice' AND status IN ('issued','partially_paid') AND valid_until < ?`, t).n,
+    tasks: get(`SELECT COUNT(*) AS n FROM activities WHERE done = 0 AND due_date IS NOT NULL AND due_date <= ? AND (assigned_to = ? OR (assigned_to IS NULL AND user_id = ?))`, t, req.user.id, req.user.id).n,
+    claims: get("SELECT COUNT(*) AS n FROM claims WHERE status IN ('open','investigating')").n,
+    late_mos: get("SELECT COUNT(*) AS n FROM manufacturing_orders WHERE status IN ('planned','released','in_progress') AND due_date < ?", t).n,
+  });
+});
+
 /** Global search for the command palette. */
 r.get('/search', (req, res) => {
   const q = String(req.query.q || '').trim();

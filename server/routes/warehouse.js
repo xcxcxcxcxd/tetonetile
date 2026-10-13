@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { all, get, insert, update, run, tx, nowTs, today } from '../db.js';
+import { all, get, insert, update, tx, nowTs, today } from '../db.js';
 import { requireRole } from '../auth.js';
 import { clean } from '../lib/validate.js';
 import { bad, idParam, notFound, conflict } from '../lib/http.js';
@@ -7,8 +7,7 @@ import { audit } from '../lib/audit.js';
 import { crud } from '../lib/crud.js';
 import { nextNumber } from '../lib/numbering.js';
 import {
-  PRESENT, listUnits, unitRow, unitByCode, findLocation, occupancy, createUnit, moveUnit, splitUnit, setUnitStatus, adjustUnit,
-  putawaySuggestions, countLocation, stockByProduct, materialStock, consumeMaterial, logMove,
+  PRESENT, listUnits, unitRow, findLocation, occupancy, createUnit, moveUnit, splitUnit, setUnitStatus, adjustUnit, putawaySuggestions, countLocation, stockByProduct, materialStock, consumeMaterial, logMove,
 } from '../services/stock.js';
 import { round2 } from '../../shared/calc.js';
 
@@ -104,6 +103,12 @@ r.get('/stock/units', (req, res) => {
     }
   }
   if (req.query.unlocated === '1') where.push('u.location_id IS NULL AND u.parent_id IS NULL');
+  if (req.query.ids) {
+    const ids = String(req.query.ids).split(',').map(Number).filter((n) => Number.isInteger(n) && n > 0).slice(0, 500);
+    where.length = 0; // explicit ids win over every other filter (labels for any unit)
+    params.length = 0;
+    where.push(ids.length ? `u.id IN (${ids.join(',')})` : '0');
+  }
   if (req.query.zone_kind) {
     where.push('z.kind = ?');
     params.push(req.query.zone_kind);

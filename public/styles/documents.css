@@ -1,0 +1,76 @@
+/* Printed documents and labels (screen preview + print). Always light, whatever the app theme. */
+.print-page { background: #e9e4dc; min-height: 100vh; padding: 0 0 40px; color: #151310; }
+.print-toolbar {
+  position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 10px 16px;
+  background: rgba(255, 253, 249, 0.92); backdrop-filter: blur(8px); border-bottom: 1px solid #ddd4c7; color: #1d1a16;
+}
+.print-toolbar .pt-title { font-weight: 650; flex: 1; min-width: 160px; }
+.sheet { width: 210mm; min-height: 297mm; margin: 18px auto; background: #fff; box-shadow: 0 4px 30px rgba(40, 30, 15, 0.18); padding: 14mm 13mm; }
+
+.doc-print { font: 9.5pt/1.42 system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; color: #151310; }
+.doc-print .dp-head { display: grid; grid-template-columns: 1fr auto; gap: 10mm; align-items: start; padding-bottom: 6mm; border-bottom: 2px solid #151310; }
+.doc-print .dp-brand { display: flex; gap: 4mm; align-items: flex-start; }
+.doc-print .dp-logo { width: 15mm; height: 15mm; object-fit: contain; }
+.doc-print .dp-brandname { font-size: 15pt; font-weight: 700; letter-spacing: 0.32em; }
+.doc-print .dp-tagline { font-size: 7pt; letter-spacing: 0.22em; text-transform: uppercase; color: #6b6257; margin-top: 1mm; }
+.doc-print .dp-company { font-size: 8pt; color: #4a443c; margin-top: 2mm; line-height: 1.45; }
+.doc-print .dp-type { text-align: right; }
+.doc-print .dp-type h1 { font-size: 17pt; letter-spacing: 0.16em; text-transform: uppercase; font-weight: 700; }
+.doc-print .dp-type .dp-num { font: 600 11pt ui-monospace, Menlo, monospace; margin-top: 1mm; }
+.doc-print .dp-type table { margin-left: auto; margin-top: 2mm; font-size: 8.5pt; border-collapse: collapse; }
+.doc-print .dp-type td { padding: 0.4mm 0 0.4mm 4mm; text-align: right; }
+.doc-print .dp-type td:first-child { color: #6b6257; }
+.doc-print .dp-parties { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6mm; margin: 6mm 0 5mm; }
+.doc-print .dp-box h4 { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6257; margin: 0 0 1.5mm; font-weight: 700; }
+.doc-print .dp-box { font-size: 8.8pt; line-height: 1.45; }
+.doc-print .dp-box b { font-size: 9.5pt; }
+.doc-print table.dp-lines { width: 100%; border-collapse: collapse; margin-top: 2mm; }
+.doc-print .dp-lines th { font-size: 6.8pt; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6257; text-align: left; padding: 2mm 1.5mm; border-bottom: 1px solid #151310; font-weight: 700; }
+.doc-print .dp-lines td { padding: 2.2mm 1.5mm; border-bottom: 0.5px solid #d8d0c4; vertical-align: top; }
+.doc-print .dp-lines .n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.doc-print .dp-lines .img { width: 19mm; }
+.doc-print .dp-lines .img img { width: 17mm; height: 17mm; object-fit: cover; border-radius: 1.2mm; border: 0.5px solid #d8d0c4; }
+.doc-print .dp-lines .ref { font: 600 8.5pt ui-monospace, Menlo, monospace; }
+.doc-print .dp-lines .desc { font-weight: 600; }
+.doc-print .dp-lines .meta { font-size: 7.6pt; color: #6b6257; margin-top: 0.8mm; }
+.doc-print .dp-lines .swatchline { display: inline-flex; align-items: center; gap: 1.5mm; }
+.doc-print .dp-lines .swatchline i { width: 3mm; height: 3mm; border-radius: 0.6mm; border: 0.4px solid rgba(0, 0, 0, 0.25); display: inline-block; }
+.doc-print .dp-bottom { display: grid; grid-template-columns: 1fr 72mm; gap: 8mm; margin-top: 5mm; align-items: start; }
+.doc-print .dp-totals { width: 100%; border-collapse: collapse; font-size: 9pt; }
+.doc-print .dp-totals td { padding: 1.2mm 0; font-variant-numeric: tabular-nums; }
+.doc-print .dp-totals td:last-child { text-align: right; }
+.doc-print .dp-totals tr.grand td { font-size: 12pt; font-weight: 700; border-top: 1.5px solid #151310; padding-top: 2mm; }
+.doc-print .dp-totals tr.sub td { color: #6b6257; font-size: 8.3pt; }
+.doc-print .dp-pack { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin-bottom: 4mm; }
+.doc-print .dp-pack div { border: 0.5px solid #d8d0c4; border-radius: 1.5mm; padding: 1.8mm 2.2mm; }
+.doc-print .dp-pack span { display: block; font-size: 6.8pt; letter-spacing: 0.12em; text-transform: uppercase; color: #6b6257; }
+.doc-print .dp-pack b { font-size: 10pt; }
+.doc-print .dp-notes { font-size: 8.3pt; white-space: pre-wrap; margin-bottom: 3mm; }
+.doc-print .dp-terms { font-size: 7.4pt; color: #3d3730; margin-top: 4mm; padding-top: 3mm; border-top: 0.5px solid #d8d0c4; }
+.doc-print .dp-terms h4 { font-size: 7pt; letter-spacing: 0.18em; text-transform: uppercase; color: #6b6257; margin: 0 0 1.5mm; }
+.doc-print .dp-terms ol { margin: 0; padding-left: 4mm; }
+.doc-print .dp-terms li { margin: 0.6mm 0; }
+.doc-print .dp-bank { font-size: 8pt; border: 0.5px solid #d8d0c4; border-radius: 1.5mm; padding: 2.5mm 3mm; margin-top: 3mm; }
+.doc-print .dp-foot { margin-top: 6mm; padding-top: 2.5mm; border-top: 0.5px solid #d8d0c4; display: flex; justify-content: space-between; gap: 6mm; font-size: 7pt; color: #6b6257; align-items: flex-end; }
+.doc-print .dp-qr { display: flex; gap: 2.5mm; align-items: center; font-size: 7pt; color: #6b6257; }
+.doc-print .dp-qr img { width: 17mm; height: 17mm; }
+.doc-print .dp-stamp { display: inline-block; border: 1.5px solid #b42318; color: #b42318; font-weight: 800; letter-spacing: 0.2em; padding: 1mm 3mm; border-radius: 1.5mm; transform: rotate(-4deg); font-size: 10pt; }
+.doc-print .dp-sign { display: grid; grid-template-columns: 1fr 1fr; gap: 10mm; margin-top: 8mm; font-size: 8pt; color: #6b6257; }
+.doc-print .dp-sign div { border-top: 0.5px solid #151310; padding-top: 1.5mm; }
+
+/* labels */
+.label-sheet { display: grid; background: #fff; margin: 18px auto; box-shadow: 0 4px 30px rgba(40, 30, 15, 0.18); }
+.label { overflow: hidden; color: #000; background: #fff; font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; position: relative; }
+.label.outline { outline: 0.2mm dashed #c9c0b3; outline-offset: -0.1mm; }
+.label .l-qr { image-rendering: pixelated; display: block; }
+.label .l-code { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 800; letter-spacing: 0.02em; line-height: 1; }
+.label .l-brand { font-size: 6pt; letter-spacing: 0.3em; font-weight: 700; text-transform: uppercase; }
+.label .l-small { font-size: 6.5pt; line-height: 1.25; }
+.label .l-strip { position: absolute; left: 0; top: 0; bottom: 0; width: 3mm; }
+.label .l-swatch { border: 0.3mm solid #000; border-radius: 1mm; }
+.label .l-arrow { font-weight: 900; }
+@media print {
+  .print-page { background: #fff; padding: 0; }
+  .label-sheet { box-shadow: none; margin: 0; }
+  .label.outline { outline: none; }
+}

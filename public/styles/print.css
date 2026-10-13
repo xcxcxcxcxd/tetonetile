@@ -1,0 +1,10 @@
+/* Print: documents (A4) and label sheets. The print pages also use these classes on screen as a preview. */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+
+html, body { background: #fff !important; color: #111 !important; }
+.no-print, .topbar, .sidebar, .bottom-nav, .toasts, .kb-panel, .print-toolbar { display: none !important; }
+.shell { display: block !important; background: none !important; }
+.content { padding: 0 !important; max-width: none !important; }
+.sheet { box-shadow: none !important; margin: 0 !important; border: 0 !important; width: auto !important; min-height: 0 !important; padding: 0 !important; }
+.doc-print tr, .doc-print .keep { break-inside: avoid; }
+a { color: inherit !important; text-decoration: none !important; }

@@ -123,21 +123,38 @@ test('stage logging enforces piece balances', async () => {
   ok(await api.post(`/api/mos/${ctx.moId}/log`, { stage_id: ctx.stages.GLAZE, qty_good: 30900, qty_scrap: 100, completes_stage: true }));
 });
 
-test('kiln load: load, fire, cool, unload writes the firing stage', async () => {
+test('kiln capacity: a load bigger than the kiln is refused unless confirmed', async () => {
   const kilns = ok(await api.get('/api/kiln-overview'));
-  const ready = kilns.ready.find((r) => r.id === ctx.moId);
-  assert.equal(ready.waiting, 30900);
+  assert.equal(kilns.ready.find((r) => r.id === ctx.moId).waiting, 30900);
   const load = ok(await api.post('/api/kiln-loads', { kiln_id: kilns.kilns[0].id }), 201).load;
-  ok(await api.post(`/api/kiln-loads/${load.id}/items`, { mo_id: ctx.moId, pcs: 30900 }));
-  ok(await api.post(`/api/kiln-loads/${load.id}/status`, { status: 'firing', fuel_kg: 900 }));
-  ok(await api.post(`/api/kiln-loads/${load.id}/status`, { status: 'cooling', peak_temp_c: 980 }));
-  const detail = ok(await api.get(`/api/kiln-loads/${load.id}`)).load;
-  ok(await api.post(`/api/kiln-loads/${load.id}/unload`, { items: [{ item_id: detail.items[0].id, pcs_good: 30500, pcs_defect: 400, complete: true }] }));
+  const tooBig = await api.post(`/api/kiln-loads/${load.id}/items`, { mo_id: ctx.moId, pcs: 30900 });
+  assert.equal(tooBig.status, 409);
+  assert.equal(tooBig.data.code, 'over_capacity');
+  assert.equal(tooBig.data.fit, 6000); // 60 m2 x 100 pcs/m2
+  const second = await api.post('/api/kiln-loads', { kiln_id: kilns.kilns[0].id });
+  assert.equal(second.status, 400, 'one open load per kiln');
+  ctx.firstLoad = load.id;
+});
+
+test('kiln loads: a big batch is fired over several loads; unloading writes the firing stage', async () => {
+  // 30 900 pieces in a 60 m2 kiln: 5 full loads of 6 000 and one of 900, 400 defective in total.
+  const plan = [[6000, 70], [6000, 70], [6000, 70], [6000, 70], [6000, 70], [900, 50]];
+  const kilnId = ok(await api.get('/api/kiln-overview')).kilns[0].id;
+  for (const [i, [pcs, defect]] of plan.entries()) {
+    const loadId = i === 0 ? ctx.firstLoad : ok(await api.post('/api/kiln-loads', { kiln_id: kilnId }), 201).load.id;
+    ok(await api.post(`/api/kiln-loads/${loadId}/items`, { mo_id: ctx.moId, pcs }));
+    ok(await api.post(`/api/kiln-loads/${loadId}/status`, { status: 'firing', fuel_kg: 500 }));
+    ok(await api.post(`/api/kiln-loads/${loadId}/status`, { status: 'cooling', peak_temp_c: 980 }));
+    const detail = ok(await api.get(`/api/kiln-loads/${loadId}`)).load;
+    ok(await api.post(`/api/kiln-loads/${loadId}/unload`, { items: [{ item_id: detail.items[0].id, pcs_good: pcs - defect, pcs_defect: defect, complete: true }] }));
+    const fire = ok(await api.get(`/api/mos/${ctx.moId}`)).progress.routing.find((s) => s.stage.code === 'FIRE');
+    assert.equal(fire.done, i === plan.length - 1, 'the firing stage closes only with the last pieces');
+  }
   const mo = ok(await api.get(`/api/mos/${ctx.moId}`));
   const fire = mo.progress.routing.find((s) => s.stage.code === 'FIRE');
   assert.equal(fire.good, 30500);
-  assert.equal(fire.done, true);
-  assert.equal(mo.kiln_loads.length, 1);
+  assert.equal(fire.scrap, 400);
+  assert.equal(mo.kiln_loads.length, 6);
 });
 
 test('sorting with QC inside the standard, then packing creates pallets reserved for the order', async () => {

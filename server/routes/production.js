@@ -210,7 +210,7 @@ r.post('/kiln-loads', PROD, (req, res) => {
 
 r.post('/kiln-loads/:id/items', PROD, (req, res) => {
   const id = idParam(req);
-  addToKiln(req, id, Number(req.body.mo_id), req.body.pcs);
+  addToKiln(req, id, Number(req.body.mo_id), req.body.pcs, { force: !!req.body.force });
   res.json({ load: kilnLoadDetail(id), ready: readyForKiln() });
 });
 
@@ -226,6 +226,15 @@ r.post('/kiln-loads/:id/status', PROD, (req, res) => {
   const id = idParam(req);
   setKilnStatus(req, id, String(req.body.status || ''), req.body);
   audit(req, 'kiln_load', id, 'status', req.body.status);
+  res.json({ load: kilnLoadDetail(id) });
+});
+
+r.put('/kiln-loads/:id', PROD, (req, res) => {
+  const id = idParam(req);
+  if (!get('SELECT id FROM kiln_loads WHERE id = ?', id)) throw notFound('Kiln load not found');
+  const v = clean({ notes: { type: 'text' }, operator: { type: 'text' }, fuel_kg: { type: 'num', min: 0 }, peak_temp_c: { type: 'num', min: 0, max: 1600 } }, req.body, { partial: true });
+  update('kiln_loads', id, v);
+  audit(req, 'kiln_load', id, 'update', Object.keys(v).join(', '));
   res.json({ load: kilnLoadDetail(id) });
 });
 
